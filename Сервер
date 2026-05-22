@@ -1,0 +1,107 @@
+const express = require("express");
+const app = express();
+const PORT = process.env.PORT || 3000;
+ 
+// ─── Middleware ───────────────────────────────────────────────────────────────
+app.use(express.json());
+ 
+// ─── In-memory storage ────────────────────────────────────────────────────────
+let tasks = [];
+let nextId = 1;
+ 
+// ─── Helper ───────────────────────────────────────────────────────────────────
+const findTask = (id) => tasks.find((t) => t.id === parseInt(id));
+ 
+// ─── Routes ───────────────────────────────────────────────────────────────────
+ 
+/**
+ * GET /tasks
+ * Returns the full list of tasks.
+ */
+app.get("/tasks", (req, res) => {
+  res.json({ success: true, count: tasks.length, data: tasks });
+});
+ 
+/**
+ * POST /tasks
+ * Creates a new task.
+ * Body: { "title": "Buy groceries" }
+ */
+app.post("/tasks", (req, res) => {
+  const { title } = req.body;
+ 
+  if (!title || typeof title !== "string" || !title.trim()) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Field 'title' is required and must be a non-empty string." });
+  }
+ 
+  const task = { id: nextId++, title: title.trim() };
+  tasks.push(task);
+ 
+  res.status(201).json({ success: true, data: task });
+});
+ 
+/**
+ * GET /tasks/:id
+ * Returns a single task by ID.
+ */
+app.get("/tasks/:id", (req, res) => {
+  const task = findTask(req.params.id);
+  if (!task) {
+    return res.status(404).json({ success: false, message: `Task with id ${req.params.id} not found.` });
+  }
+  res.json({ success: true, data: task });
+});
+ 
+/**
+ * PATCH /tasks/:id
+ * Updates a task's title by ID.
+ * Body: { "title": "New title" }
+ */
+app.patch("/tasks/:id", (req, res) => {
+  const task = findTask(req.params.id);
+  if (!task) {
+    return res.status(404).json({ success: false, message: `Task with id ${req.params.id} not found.` });
+  }
+ 
+  const { title } = req.body;
+  if (!title || typeof title !== "string" || !title.trim()) {
+    return res
+      .status(400)
+      .json({ success: false, message: "Field 'title' is required and must be a non-empty string." });
+  }
+ 
+  task.title = title.trim();
+  res.json({ success: true, data: task });
+});
+ 
+/**
+ * DELETE /tasks/:id
+ * Removes a task by ID.
+ */
+app.delete("/tasks/:id", (req, res) => {
+  const index = tasks.findIndex((t) => t.id === parseInt(req.params.id));
+  if (index === -1) {
+    return res.status(404).json({ success: false, message: `Task with id ${req.params.id} not found.` });
+  }
+ 
+  const [removed] = tasks.splice(index, 1);
+  res.json({ success: true, message: "Task deleted successfully.", data: removed });
+});
+ 
+// ─── 404 fallback ─────────────────────────────────────────────────────────────
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: "Route not found." });
+});
+ 
+// ─── Start ────────────────────────────────────────────────────────────────────
+app.listen(PORT, () => {
+  console.log(` Todo API running at http://localhost:${PORT}`);
+  console.log(` Endpoints:`);
+  console.log(`   GET    /tasks`);
+  console.log(`   POST   /tasks`);
+  console.log(`   GET    /tasks/:id`);
+  console.log(`   PATCH  /tasks/:id`);
+  console.log(`   DELETE /tasks/:id`);
+});
